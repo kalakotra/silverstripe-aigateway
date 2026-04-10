@@ -1,0 +1,61 @@
+---
+Name: aigateway
+After:
+  - '#rootroutes'
+  - '#coreroutes'
+---
+
+# =============================================================================
+# AIProviderRegistry — slug-to-class map
+# =============================================================================
+# Third-party modules extend this list by shipping their own _config.yml.
+# No changes to this file are required to add a new provider.
+# Example for a hypothetical Mistral integration:
+#   Kalakotra\AIGateway\Services\AIProviderRegistry:
+#     providers:
+#       mistral: Acme\MistralProvider\MistralProvider
+# =============================================================================
+
+Kalakotra\AIGateway\Services\AIProviderRegistry:
+  providers:
+    openai:    Kalakotra\AIGateway\Providers\OpenAIProvider
+    gemini:    Kalakotra\AIGateway\Providers\GeminiProvider
+    anthropic: Kalakotra\AIGateway\Providers\AnthropicProvider
+
+# =============================================================================
+# AIGatewayService — runtime defaults
+# =============================================================================
+
+Kalakotra\AIGateway\Services\AIGatewayService:
+  # Disable in test suites via test/_config/test.yml:
+  #   Kalakotra\AIGateway\Services\AIGatewayService:
+  #     enable_logging: false
+  enable_logging: true
+
+  # Guzzle connect+read timeout in seconds for upstream AI API calls.
+  # Override per-environment in app/_config/environment.yml.
+  http_timeout: 30
+
+# =============================================================================
+# SilverStripe Injector — dependency wiring for AIGatewayService
+# =============================================================================
+# AIGatewayService depends on AIProviderRegistry and a PSR-3 LoggerInterface.
+# The logger is resolved from the framework's default Monolog binding so that
+# log output respects the project's existing log handler configuration.
+# =============================================================================
+
+SilverStripe\Core\Injector\Injector:
+
+  # Bind the registry as a singleton (no state between calls; safe to share)
+  Kalakotra\AIGateway\Services\AIProviderRegistry:
+    class: Kalakotra\AIGateway\Services\AIProviderRegistry
+
+  # Wire AIGatewayService with its two constructor dependencies
+  Kalakotra\AIGateway\Services\AIGatewayService:
+    class: Kalakotra\AIGateway\Services\AIGatewayService
+    constructor:
+      registry: '%$Kalakotra\AIGateway\Services\AIProviderRegistry'
+      logger:   '%$Psr\Log\LoggerInterface'
+
+  # Convenience short alias — allows Injector::inst()->get('AIGateway') calls
+  AIGateway: '%$Kalakotra\AIGateway\Services\AIGatewayService'
