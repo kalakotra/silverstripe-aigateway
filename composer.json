@@ -1,11 +1,11 @@
 {
     "name": "kalakotra/silverstripe-aigateway",
-    "description": "Standardised AI provider gateway layer for SilverStripe 6.1 — supports OpenAI, Gemini and Anthropic via Strategy pattern.",
+    "description": "Standardised AI provider gateway layer for SilverStripe 5.4, supporting OpenAI, Gemini and Anthropic via Strategy pattern.",
     "type": "silverstripe-vendormodule",
     "license": "proprietary",
     "require": {
         "php": "^8.2",
-        "silverstripe/framework": "^6.1",
+        "silverstripe/framework": "^5.4",
         "guzzlehttp/guzzle": "^7.8"
     },
     "autoload": {

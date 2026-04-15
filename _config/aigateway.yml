@@ -19,6 +19,7 @@ After:
 Kalakotra\AIGateway\Services\AIProviderRegistry:
   providers:
     openai:    Kalakotra\AIGateway\Providers\OpenAIProvider
+    openllm:   Kalakotra\AIGateway\Providers\OpenLLMProvider
     gemini:    Kalakotra\AIGateway\Providers\GeminiProvider
     anthropic: Kalakotra\AIGateway\Providers\AnthropicProvider
 

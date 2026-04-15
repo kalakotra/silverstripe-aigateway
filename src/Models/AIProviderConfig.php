@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kalakotra\AIGateway\Models;
 
 use SilverStripe\ORM\DataObject;
-use SilverStripe\Core\Validation\ValidationResult;
+use SilverStripe\ORM\ValidationResult;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\DropdownField;
@@ -67,6 +67,7 @@ class AIProviderConfig extends DataObject implements PermissionProvider
 
     private static array $supported_providers = [
         'openai'    => 'OpenAI (GPT)',
+        'openllm'   => 'OpenLLM (Mittwald)',
         'gemini'    => 'Google Gemini',
         'anthropic' => 'Anthropic (Claude)',
     ];
@@ -177,11 +178,11 @@ class AIProviderConfig extends DataObject implements PermissionProvider
         // INVARIANT: Only one AIProviderConfig may be IsActive at any time.
         // If this record is being set to active, deactivate all other records first.
         if ((bool) $this->IsActive) {
-            $others = self::get()->filter('IsActive', true);
+            $others = self::get()->filter('IsActive', '1');
 
             // Exclude the current record if it already exists in the DB
             if ($this->exists()) {
-                $others = $others->exclude('ID', $this->ID);
+                $others = $others->exclude('ID', (string) $this->ID);
             }
 
             foreach ($others as $other) {
