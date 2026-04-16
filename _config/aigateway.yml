@@ -21,6 +21,7 @@ Kalakotra\AIGateway\Services\AIProviderRegistry:
     openai:    Kalakotra\AIGateway\Providers\OpenAIProvider
     gemini:    Kalakotra\AIGateway\Providers\GeminiProvider
     anthropic: Kalakotra\AIGateway\Providers\AnthropicProvider
+    mittwald-open-llm: Kalakotra\AIGateway\Providers\MittwaldOpenLLMProvider
 
 # =============================================================================
 # AIGatewayService — runtime defaults

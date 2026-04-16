@@ -33,7 +33,7 @@ class AIProviderConfig extends DataObject implements PermissionProvider
     private static string $plural_name   = 'AI Providers';
 
     private static array $db = [
-        'ProviderName' => 'Varchar(64)',   // e.g. 'openai', 'gemini', 'anthropic'
+        'ProviderName' => 'Varchar(64)',   // e.g. 'openai', 'gemini', 'anthropic', 'mittwald-open-llm'
         'Label'        => 'Varchar(128)',  // Human-readable label, e.g. 'OpenAI GPT-4o (Production)'
         'APIKey'       => 'Text',          // Stored encrypted-at-rest in production
         'ModelName'    => 'Varchar(128)',  // e.g. 'gpt-4o', 'gemini-1.5-pro', 'claude-3-5-sonnet-20241022'
@@ -69,6 +69,7 @@ class AIProviderConfig extends DataObject implements PermissionProvider
         'openai'    => 'OpenAI (GPT)',
         'gemini'    => 'Google Gemini',
         'anthropic' => 'Anthropic (Claude)',
+        'mittwald-open-llm' => 'Mittwald Open-LLM',
     ];
 
     // -------------------------------------------------------------------------

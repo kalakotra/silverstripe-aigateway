@@ -112,8 +112,9 @@ class OpenAIProvider extends AbstractAIProvider
         if (!is_string($content)) {
             throw new AIProviderException(
                 message: sprintf(
-                    '[openai] Unexpected response shape — "choices[0].message.content" missing. '
+                    '[%s] Unexpected response shape — "choices[0].message.content" missing. '
                     . 'Finish reason: %s.',
+                    $providerSlug,
                     $raw['choices'][0]['finish_reason'] ?? 'unknown'
                 ),
                 providerSlug: $providerSlug,

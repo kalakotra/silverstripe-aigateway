@@ -1,10 +1,10 @@
 # AI Gateway for SilverStripe 6
 
-A standardized AI provider gateway layer for SilverStripe 6.1+ that abstracts multiple AI providers (OpenAI, Google Gemini, and Anthropic Claude) behind a unified interface. Built on the Strategy pattern for easy provider switching and extensibility.
+A standardized AI provider gateway layer for SilverStripe 6.1+ that abstracts multiple AI providers (OpenAI, Google Gemini, Anthropic Claude, and Mittwald Open-LLM) behind a unified interface. Built on the Strategy pattern for easy provider switching and extensibility.
 
 ## Features
 
-- **Multi-provider support**: Seamlessly switch between OpenAI GPT, Google Gemini, and Anthropic Claude
+- **Multi-provider support**: Seamlessly switch between OpenAI GPT, Google Gemini, Anthropic Claude, and Mittwald Open-LLM
 - **Unified API**: Single interface for all AI providers with consistent response handling
 - **Audit logging**: Automatic tracking of all API calls with token accounting and latency metrics
 - **Provider management**: CMS interface to manage, test, and activate AI provider configurations
@@ -35,6 +35,7 @@ In your SilverStripe CMS, navigate to **AI Gateway** admin section and create/ac
 - **OpenAI** (GPT-4o, GPT-4 Turbo, etc.)
 - **Google Gemini** (Gemini 1.5 Pro, etc.)
 - **Anthropic Claude** (Claude 3.5 Sonnet, etc.)
+- **Mittwald Open-LLM** (self-hosted OpenAI-compatible models)
 
 ### Step 2: Configure in YAML (Optional)
 
@@ -56,6 +57,10 @@ Kalakotra\AIGateway\Services\AIProviderRegistry:
       label: 'Anthropic Claude'
       class: 'Kalakotra\AIGateway\Providers\AnthropicProvider'
       endpoint: 'https://api.anthropic.com/v1/messages'
+        mittwald-open-llm:
+            label: 'Mittwald Open-LLM'
+            class: 'Kalakotra\AIGateway\Providers\MittwaldOpenLLMProvider'
+            endpoint: 'https://llm.aihosting.mittwald.de/v1/chat/completions'
     gemini:
       label: 'Google Gemini'
       class: 'Kalakotra\AIGateway\Providers\GeminiProvider'
@@ -187,6 +192,7 @@ Concrete implementations for each AI service:
 - **`OpenAIProvider`**: Communicates with OpenAI API (GPT-4, GPT-4o, etc.)
 - **`GeminiProvider`**: Communicates with Google Vertex AI / Generative Language API
 - **`AnthropicProvider`**: Communicates with Anthropic's Messages API (Claude)
+- **`MittwaldOpenLLMProvider`**: Communicates with Mittwald's self-hosted OpenAI-compatible endpoint
 
 Each provider:
 - Transforms the generic prompt into provider-specific request format
