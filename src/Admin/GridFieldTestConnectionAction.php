@@ -22,12 +22,11 @@ use SilverStripe\Core\Injector\Injector;
  * Adds a "Test Connection" button to each row of the AIProviderConfig GridField.
  *
  * When clicked, the action:
- *  1. Temporarily overrides the active provider to the selected row's config.
- *  2. Calls AIGatewayService::ask() with a minimal ping prompt.
- *  3. Returns a JSON response that the CMS JS layer surfaces as a toast notification.
+ *  - Text providers: fires a minimal ping prompt through the provider's API.
+ *  - Image providers: validates the API key format only (no live generation call,
+ *    as image calls consume quota and require a different request shape).
  *
  * The test call is isolated — it does NOT change IsActive in the database.
- * A dedicated AILog entry is written with CallerContext = 'connection-test'.
  *
  * Registration (in AIGatewayAdmin or any GridFieldConfig):
  * ```php
@@ -142,17 +141,19 @@ class GridFieldTestConnectionAction extends AbstractGridFieldComponent implement
             return $this->jsonResponse(false, 'Provider configuration not found or access denied.');
         }
 
+        // Image providers cannot be tested with a text ping — validate API key format only.
+        if (($config->Category ?? 'text') === 'image') {
+            return $this->handleImageKeyValidation($config);
+        }
+
         try {
             $response = $this->runTestCall($config);
 
             return $this->jsonResponse(
                 success: true,
-                message: sprintf(
-                    'Connection successful. Model: %s | Tokens: %d | Latency: %.0f ms',
-                    $response->model,
-                    $response->totalTokens(),
-                    $response->latencyMs,
-                ),
+                message: 'Connection successful. Model: ' . $response->model
+                    . ' | Tokens: ' . $response->totalTokens()
+                    . ' | Latency: ' . round($response->latencyMs) . ' ms',
                 extra: [
                     'model'      => $response->model,
                     'latency_ms' => $response->latencyMs,
@@ -164,11 +165,7 @@ class GridFieldTestConnectionAction extends AbstractGridFieldComponent implement
         } catch (AIProviderException $e) {
             return $this->jsonResponse(
                 success: false,
-                message: sprintf(
-                    'Connection failed (HTTP %d): %s',
-                    $e->getHttpStatusCode(),
-                    $e->getMessage(),
-                ),
+                message: 'Connection failed (HTTP ' . $e->getHttpStatusCode() . '): ' . $e->getMessage(),
             );
 
         } catch (\Throwable $e) {
@@ -212,10 +209,43 @@ class GridFieldTestConnectionAction extends AbstractGridFieldComponent implement
         return $provider->sendPrompt(
             prompt: self::PING_PROMPT,
             options: [
-                'max_tokens'     => 10,
+                'max_tokens'     => 50,
                 'caller_class'   => self::class,
                 'caller_context' => 'connection-test',
             ],
+        );
+    }
+
+    /**
+     * For image-category providers, a text ping is not applicable.
+     * Validate the API key format via the provider's own validateApiKey() method
+     * and return an informative result without making a live API call.
+     */
+    private function handleImageKeyValidation(AIProviderConfig $config): HTTPResponse
+    {
+        /** @var AIProviderRegistry $registry */
+        $registry = Injector::inst()->get(AIProviderRegistry::class);
+
+        $providerClass = $registry->requireProviderClass($config->ProviderName);
+
+        /** @var \Kalakotra\AIGateway\Interfaces\AIProviderInterface $provider */
+        $provider = Injector::inst()->createWithArgs($providerClass, [
+            $config->APIKey,
+            $config->ModelName,
+            5,
+        ]);
+
+        if (!$provider->validateApiKey($config->APIKey)) {
+            return $this->jsonResponse(
+                success: false,
+                message: 'API key format is invalid for provider "' . $config->ProviderName . '".',
+            );
+        }
+
+        return $this->jsonResponse(
+            success: true,
+            message: 'API key format is valid. '
+                . 'Note: image providers are not live-tested to avoid consuming generation quota.',
         );
     }
 
