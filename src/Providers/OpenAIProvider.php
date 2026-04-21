@@ -107,19 +107,24 @@ class OpenAIProvider extends AbstractAIProvider
         string $model,
         float $latencyMs,
     ): AIResponseDTO {
-        $content = $raw['choices'][0]['message']['content'] ?? null;
+        $content    = $raw['choices'][0]['message']['content'] ?? null;
+        $finishReason = $raw['choices'][0]['finish_reason'] ?? 'unknown';
 
         if (!is_string($content)) {
-            throw new AIProviderException(
-                message: sprintf(
-                    '[%s] Unexpected response shape — "choices[0].message.content" missing. '
-                    . 'Finish reason: %s.',
-                    $providerSlug,
-                    $raw['choices'][0]['finish_reason'] ?? 'unknown'
-                ),
-                providerSlug: $providerSlug,
-                httpStatusCode: 200,
-            );
+            // Some OpenAI-compatible models (e.g. open-source LLMs) return content: null
+            // when the token limit is hit mid-generation. Treat as empty truncated response
+            // rather than a hard failure so callers can still detect a live connection.
+            if ($finishReason === 'length') {
+                $content = '';
+            } else {
+                throw new AIProviderException(
+                    message: "[$providerSlug] Unexpected response shape — "
+                        . '"choices[0].message.content" missing. '
+                        . "Finish reason: $finishReason.",
+                    providerSlug: $providerSlug,
+                    httpStatusCode: 200,
+                );
+            }
         }
 
         // OpenAI returns the actual model version used (e.g. 'gpt-4o-2024-08-06').
