@@ -19,7 +19,9 @@ use SilverStripe\Security\PermissionProvider;
  * Persists AI provider credentials and activation state.
  *
  * Business rules enforced here:
- *  - Only ONE record may have IsActive = true at any time (enforced in onBeforeWrite).
+ *  - Only ONE record per Category may have IsActive = true at any time (enforced in onBeforeWrite).
+ *    This allows one active text provider and one active image provider simultaneously.
+ *  - Category defaults to 'text' when not set; 'image' enables image-generation providers.
  *  - API keys are stored as plain text in the DB but rendered via PasswordField in the CMS
  *    so they are not visible over the shoulder. For production, encrypt at rest using
  *    SilverStripe's symmetric encryption helpers or a secrets manager.
@@ -33,12 +35,13 @@ class AIProviderConfig extends DataObject implements PermissionProvider
     private static string $plural_name   = 'AI Providers';
 
     private static array $db = [
-        'ProviderName' => 'Varchar(64)',   // e.g. 'openai', 'gemini', 'anthropic', 'mittwald-open-llm'
-        'Label'        => 'Varchar(128)',  // Human-readable label, e.g. 'OpenAI GPT-4o (Production)'
-        'APIKey'       => 'Text',          // Stored encrypted-at-rest in production
-        'ModelName'    => 'Varchar(128)',  // e.g. 'gpt-4o', 'gemini-1.5-pro', 'claude-3-5-sonnet-20241022'
+        'ProviderName' => 'Varchar(64)',          // e.g. 'openai', 'gemini', 'anthropic', 'mittwald-open-llm'
+        'Label'        => 'Varchar(128)',          // Human-readable label, e.g. 'OpenAI GPT-4o (Production)'
+        'APIKey'       => 'Text',                  // Stored encrypted-at-rest in production
+        'ModelName'    => 'Varchar(128)',          // e.g. 'gpt-4o', 'gemini-1.5-pro', 'claude-3-5-sonnet-20241022'
+        'Category'     => "Enum('text,image','text')", // Determines what this provider generates
         'IsActive'     => 'Boolean',
-        'Notes'        => 'Text',          // Optional internal notes for CMS editors
+        'Notes'        => 'Text',                  // Optional internal notes for CMS editors
     ];
 
     private static array $has_many = [
@@ -46,16 +49,18 @@ class AIProviderConfig extends DataObject implements PermissionProvider
     ];
 
     private static array $summary_fields = [
-        'Label'              => 'Label',
-        'ProviderName'       => 'Provider',
-        'ModelName'          => 'Model',
-        'IsActiveNice'       => 'Active',
+        'Label'        => 'Label',
+        'ProviderName' => 'Provider',
+        'ModelName'    => 'Model',
+        'Category'     => 'Category',
+        'IsActiveNice' => 'Active',
     ];
 
     private static array $searchable_fields = [
         'Label',
         'ProviderName',
         'ModelName',
+        'Category',
         'IsActive',
     ];
 
@@ -92,6 +97,11 @@ class AIProviderConfig extends DataObject implements PermissionProvider
             TextField::create('ModelName', 'Model Name')
                 ->setDescription('Exact model identifier, e.g. gpt-4o, gemini-1.5-pro, claude-opus-4-6'),
 
+            DropdownField::create('Category', 'Category', [
+                'text'  => 'Text generation',
+                'image' => 'Image generation',
+            ])->setDescription('Determines what this provider is used for. One active provider per category is allowed.'),
+
             // PasswordField prevents the key from being visible in plain text on screen.
             // The field autocomplete is disabled via setAutocomplete to prevent browser password managers
             // from overwriting saved keys with login credentials.
@@ -100,7 +110,7 @@ class AIProviderConfig extends DataObject implements PermissionProvider
                 ->setAttribute('autocomplete', 'new-password'),
 
             CheckboxField::create('IsActive', 'Set as Active Provider')
-                ->setDescription('Only one provider may be active at a time. Activating this will deactivate all others.'),
+                ->setDescription('Only one provider per category may be active at a time. Activating this will deactivate other providers in the same category.'),
 
             TextField::create('Notes', 'Internal Notes')
                 ->setDescription('Optional. Visible only to CMS admins.'),
@@ -175,10 +185,13 @@ class AIProviderConfig extends DataObject implements PermissionProvider
             }
         }
 
-        // INVARIANT: Only one AIProviderConfig may be IsActive at any time.
-        // If this record is being set to active, deactivate all other records first.
+        // INVARIANT: Only one AIProviderConfig per Category may be IsActive at any time.
+        // If this record is being set to active, deactivate other records in the same category.
         if ((bool) $this->IsActive) {
-            $others = self::get()->filter('IsActive', true);
+            $others = self::get()->filter([
+                'IsActive' => true,
+                'Category' => $this->Category ?: 'text',
+            ]);
 
             // Exclude the current record if it already exists in the DB
             if ($this->exists()) {

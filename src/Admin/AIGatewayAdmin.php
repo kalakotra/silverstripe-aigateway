@@ -90,6 +90,7 @@ class AIGatewayAdmin extends ModelAdmin
             'Label'        => 'Label',
             'ProviderName' => 'Provider',
             'ModelName'    => 'Model',
+            'Category'     => 'Category',
             'ActiveBadge'  => 'Status',
             'Created'      => 'Created',
         ]);

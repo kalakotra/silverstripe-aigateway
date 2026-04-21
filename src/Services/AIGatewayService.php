@@ -72,20 +72,22 @@ class AIGatewayService
      *
      * @param  string               $prompt   The prompt text.
      * @param  array<string, mixed> $options  Per-call overrides forwarded to the provider:
+     *                                         - 'category'       string  'text' (default) or 'image'
      *                                         - 'temperature'    float
      *                                         - 'max_tokens'     int
      *                                         - 'system'         string
      *                                         - 'caller_class'   string  (for log attribution)
      *                                         - 'caller_context' string  (for log attribution)
      *
-     * @throws AIProviderException  When no active provider is configured, the
-     *                              provider class cannot be resolved, or the
-     *                              upstream API call fails.
+     * @throws AIProviderException  When no active provider is configured for the
+     *                              requested category, the provider class cannot be
+     *                              resolved, or the upstream API call fails.
      */
     public function ask(string $prompt, array $options = []): AIResponseDTO
     {
         // -- 1. Resolve active provider configuration from DB ---------------------
-        $providerConfig = $this->resolveActiveConfig();
+        $category = (string) ($options['category'] ?? 'text');
+        $providerConfig = $this->resolveActiveConfig($category);
 
         // -- 2. Resolve provider class via Registry --------------------------------
         $providerClass = $this->registry->requireProviderClass($providerConfig->ProviderName);
@@ -103,7 +105,7 @@ class AIGatewayService
         $callerContext = (string) ($options['caller_context'] ?? '');
 
         // Strip internal meta-keys before forwarding options to the provider
-        $providerOptions = array_diff_key($options, array_flip(['caller_class', 'caller_context']));
+        $providerOptions = array_diff_key($options, array_flip(['caller_class', 'caller_context', 'category']));
 
         $startTime = microtime(true);
 
@@ -185,25 +187,36 @@ class AIGatewayService
         return $this->ask($prompt, $options)->content;
     }
 
+    /**
+     * Convenience wrapper for image-generation calls.
+     * Equivalent to ask($prompt, ['category' => 'image', ...$options]).
+     *
+     * @throws AIProviderException
+     */
+    public function askImage(string $prompt, array $options = []): AIResponseDTO
+    {
+        return $this->ask($prompt, [...$options, 'category' => 'image']);
+    }
+
     // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
 
     /**
-     * Return the one AIProviderConfig that has IsActive = true.
+     * Return the AIProviderConfig that is active for the given category.
      *
-     * @throws AIProviderException  When no active provider is configured.
+     * @throws AIProviderException  When no active provider is configured for the category.
      */
-    private function resolveActiveConfig(): AIProviderConfig
+    private function resolveActiveConfig(string $category = 'text'): AIProviderConfig
     {
         /** @var AIProviderConfig|null $config */
         $config = AIProviderConfig::get()
-            ->filter('IsActive', true)
+            ->filter(['IsActive' => true, 'Category' => $category])
             ->first();
 
         if ($config === null) {
             throw new AIProviderException(
-                message: 'No active AI provider is configured. '
+                message: "No active AI provider is configured for category \"$category\". "
                     . 'Go to Admin → AI Gateway and mark one provider as Active.',
                 providerSlug: 'none',
                 httpStatusCode: 0,
