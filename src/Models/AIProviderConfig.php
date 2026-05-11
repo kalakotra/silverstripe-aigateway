@@ -67,6 +67,7 @@ class AIProviderConfig extends DataObject implements PermissionProvider
 
     private static array $supported_providers = [
         'openai'    => 'OpenAI (GPT)',
+        'openrouter'=> 'OpenRouter',
         'openllm'   => 'OpenLLM (Mittwald)',
         'gemini'    => 'Google Gemini',
         'anthropic' => 'Anthropic (Claude)',
